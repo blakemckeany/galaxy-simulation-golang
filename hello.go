@@ -18,8 +18,8 @@ const (
 	width  = 720
 	height = 720
 
-	particleCount = 150
-	particleSize  = 0.01
+	particleCount = 3000
+	particleSize  = 0.001
 	grav          = 0.0000
 
 	// Vertex shader, GLSL
@@ -217,7 +217,7 @@ func calculateForce(p1, p2 *Particle) Vector {
 	distanceMagnitude := distance.magnitude()
 
 	// Apply a softening factor to prevent excessive force at close distances
-	softening := float32(0.5)
+	softening := float32(0.7)
 	distanceMagnitude = float32(math.Sqrt(float64(distanceMagnitude*distanceMagnitude + softening*softening)))
 
 	// Calculate the force magnitude using Newton's law of universal gravitation
@@ -303,7 +303,20 @@ func newParticle(x, y, mass float32, anchor bool) *Particle {
 	}
 
 	// Random velocity
-	velocity := Vector{rand.Float32()*2 - 1, rand.Float32()*2 - 1, 0}.mul(0.1)
+
+	// Calculate the initial velocity of the particle
+	// Based on perpindicular vector to the center of the screen
+	// This will give the particle a circular orbit
+
+	center := Vector{0, 0, 0}
+	position := Vector{x, y, 0}
+	distance := position.distance(center)
+
+	// Calculate the velocity vector
+	velocity := Vector{0, 0, 0}
+	if distance != 0 {
+		velocity = Vector{-(y - center.Y) / distance, (x - center.X) / distance, 0}.mul(0.15)
+	}
 
 	return &Particle{
 		drawable: makeVao(points),
