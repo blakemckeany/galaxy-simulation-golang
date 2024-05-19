@@ -20,8 +20,8 @@ const (
 	width  = 720
 	height = 720
 
-	particleCount = 100
-	particleSize  = 0.001
+	particleCount = 1500
+	particleSize  = 0.0015
 	grav          = 0.0000
 
 	// Vertex shader, GLSL
@@ -38,7 +38,7 @@ const (
         #version 410
         out vec4 frag_colour;
         void main() {
-            frag_colour = vec4(0.5, 1, 0, 1);
+            frag_colour = vec4(0.5, 1, 0, 0.5);
         }
     ` + "\x00"
 )
@@ -136,7 +136,7 @@ func draw(particles []*Particle, window *glfw.Window, prog uint32) {
 
 	if elapsedTime >= 1.0 {
 		fps := frames / elapsedTime
-		window.SetTitle("Galaxy Simulation - FPS: " + strconv.FormatFloat(float64(fps), 'f', 2, 64))
+		window.SetTitle("Galaxy Simulation - FPS: " + strconv.FormatFloat(float64(fps), 'f', 2, 64) + " - Particles: " + strconv.Itoa(particleCount))
 		frames = 0
 		elapsedTime = 0
 	}
