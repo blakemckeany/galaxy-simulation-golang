@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"time"
 
+	"strconv"
+
 	"fmt"
 	"strings"
 
@@ -18,7 +20,7 @@ const (
 	width  = 720
 	height = 720
 
-	particleCount = 3000
+	particleCount = 100
 	particleSize  = 0.001
 	grav          = 0.0000
 
@@ -69,7 +71,10 @@ var (
 		particleSize, -particleSize, 0, // right
 	}
 
-	lastTime float64
+	frames      = float32(0)
+	elapsedTime = float32(0)
+
+	lastTime = float32(0.0)
 )
 
 func main() {
@@ -122,9 +127,19 @@ func draw(particles []*Particle, window *glfw.Window, prog uint32) {
 		p.draw()
 	}
 
-	currentTime := glfw.GetTime()
+	currentTime := float32(glfw.GetTime())
 	dt := float32(currentTime - lastTime)
 	lastTime = currentTime
+
+	elapsedTime += dt
+	frames++
+
+	if elapsedTime >= 1.0 {
+		fps := frames / elapsedTime
+		window.SetTitle("Galaxy Simulation - FPS: " + strconv.FormatFloat(float64(fps), 'f', 2, 64))
+		frames = 0
+		elapsedTime = 0
+	}
 
 	updateParticles(particles, dt)
 
