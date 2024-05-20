@@ -20,11 +20,15 @@ const (
 	width  = 900
 	height = 900
 
-	particleCount   = 1500
-	particleSize    = 0.001
-	grav            = 0.0000
-	blackHoleMass   = 10000
-	softeningFactor = 0.9
+	particleCount     = 15000
+	particleSize      = 0.0025
+	grav              = 5.0
+	particleMass      = 1
+	blackHoleMass     = 1
+	softeningFactor   = 0.1
+	dampeningFactor   = 0.9983
+	initialSpinFactor = 0.1
+	queryRange        = 15
 
 	// Vertex shader, GLSL
 	vertexShaderSource = `
@@ -40,14 +44,10 @@ const (
         #version 410
         out vec4 frag_colour;
         void main() {
-            frag_colour = vec4(1, 1, 1, 0.1);
+            frag_colour = vec4(1, 1, 1, 0.2);
         }
     ` + "\x00"
 )
-
-type Vector struct {
-	X, Y, Z float32
-}
 
 type Particle struct {
 	drawable uint32
@@ -61,7 +61,6 @@ type Particle struct {
 
 var (
 	// Slice of vertices for a square
-
 	square = []float32{
 
 		-particleSize, particleSize, 0, // top
@@ -73,9 +72,7 @@ var (
 		particleSize, -particleSize, 0, // right
 	}
 
-	quadTree = Quadtree{
-		Bounds: Rect{X: -1, Y: -1, W: 1, H: 1},
-	}
+	quadTree = NewQuadtree(-1, -1, 2, 2)
 
 	frames      = float32(0)
 	elapsedTime = float32(0)
@@ -100,10 +97,6 @@ func main() {
 		// TODO
 		draw(vao, window, program)
 	}
-}
-
-func (v Vector) add(v2 Vector) Vector {
-	return Vector{v.X + v2.X, v.Y + v2.Y, v.Z + v2.Z}
 }
 
 func (p *Particle) draw() {
@@ -156,12 +149,39 @@ func draw(particles []*Particle, window *glfw.Window, prog uint32) {
 }
 
 func updateParticles(particles []*Particle, dt float32) {
+
+	// Quad tree
+	quadTree = NewQuadtree(-1, -1, 2, 2)
+
+	for _, p := range particles {
+		quadTree.Insert(p)
+	}
+
 	// Calculate the forces between the particles
-	for i, p := range particles {
+	for _, p := range particles {
+
 		p.acceleration = Vector{0, 0, 0} // Reset acceleration
 
-		for j, p2 := range particles {
-			if i == j {
+		queryRange := Rect{p.x - queryRange/2, p.y - queryRange/2, queryRange, queryRange}
+		nearbyParticles := quadTree.Query(queryRange)
+
+		// node := quadTree.GetNode(p)
+
+		// // If not null, get the particles in the node and its neighbours
+		// if node == nil {
+		// 	continue
+		// }
+		// particlesInNode := node.Particles
+
+		// neighbourNodes := node.GetNeighbors()
+
+		// for _, neighbour := range neighbourNodes {
+		// 	particlesInNode = append(particlesInNode, neighbour.Particles...)
+		// }
+
+		// if node != nil {
+		for _, p2 := range nearbyParticles {
+			if p == p2 {
 				continue
 			}
 
@@ -171,70 +191,42 @@ func updateParticles(particles []*Particle, dt float32) {
 			// Accumulate the force to the particle's acceleration
 			p.acceleration = p.acceleration.add(force.mul(0.8 / p.mass))
 		}
+		// }
 	}
 
 	// Update the position and velocity of the particles
 	for _, p := range particles {
-		if p.blackhole {
-			continue
-		}
+		// if p.blackhole {
+		// 	continue
+		// }
 		// Update velocity based on acceleration
 		p.velocity = p.velocity.add(p.acceleration.mul(dt))
 
 		// Dampen the velocity
-		p.velocity = p.velocity.mul(0.99999)
+		p.velocity = p.velocity.mul(dampeningFactor)
 
 		// Update position based on velocity
+
 		p.x += p.velocity.X * dt
 		p.y += p.velocity.Y * dt
+
+		// Wrap the particles around the screen
+		if p.x < -1 {
+			p.x = 1
+		}
+		if p.x > 1 {
+			p.x = -1
+		}
+		if p.y < -1 {
+			p.y = 1
+		}
+		if p.y > 1 {
+			p.y = -1
+		}
+
 	}
 }
 
-// func updateParticles(particles []*Particle) {
-// 	// Update the position of the particles
-// 	for _, p := range particles {
-// 		// p.acceleration = Vector{0, -grav, 0}
-
-// 		p.velocity = p.velocity.add(p.acceleration)
-
-// 		// Clamp the velocity
-// 		if p.velocity.magnitude() > 0.01 {
-// 			p.velocity = p.velocity.normalize().mul(0.01)
-// 		}
-
-// 		p.x += p.velocity.X
-// 		p.y += p.velocity.Y
-// 	}
-
-// 	// Calculate the forces between the particles
-// 	for i, p := range particles {
-// 		for j, p2 := range particles {
-// 			if i == j {
-// 				continue
-// 			}
-
-// 			// Calculate the force between the particles
-// 			force := calculateForce(p, p2)
-
-// 			// Apply the force to the particles
-// 			p.acceleration = p.acceleration.add(force.mul(1.0 / p.mass))
-// 		}
-// 	}
-// }
-
-// func calculateForce(p1, p2 *Particle) Vector {
-// 	// Calculate the distance between the particles
-// 	distance := Vector{p2.x - p1.x, p2.y - p1.y, 0}
-// 	distanceMagnitude := distance.magnitude()
-
-// 	// Calculate the force magnitude using Newton's law of universal gravitation
-// 	forceMagnitude := p1.mass * p2.mass / (distanceMagnitude * distanceMagnitude)
-
-// 	// Calculate the force vector by normalizing the distance vector and scaling it by the force magnitude
-// 	forceVector := distance.normalize().mul(forceMagnitude)
-
-//		return forceVector
-//	}
 func calculateForce(p1, p2 *Particle) Vector {
 	// Calculate the distance between the particles
 	distance := Vector{p2.x - p1.x, p2.y - p1.y, 0}
@@ -245,32 +237,12 @@ func calculateForce(p1, p2 *Particle) Vector {
 	distanceMagnitude = float32(math.Sqrt(float64(distanceMagnitude*distanceMagnitude + softening*softening)))
 
 	// Calculate the force magnitude using Newton's law of universal gravitation
-	forceMagnitude := p1.mass * p2.mass / (distanceMagnitude * distanceMagnitude)
+	forceMagnitude := grav * p1.mass * p2.mass / (distanceMagnitude * distanceMagnitude)
 
 	// Calculate the force vector by normalizing the distance vector and scaling it by the force magnitude
 	forceVector := distance.normalize().mul(forceMagnitude)
 
 	return forceVector
-}
-
-func (v1 Vector) distance(v2 Vector) float32 {
-	dx := v2.X - v1.X
-	dy := v2.Y - v1.Y
-	dz := v2.Z - v1.Z
-	return float32(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
-}
-
-func (v Vector) normalize() Vector {
-	magnitude := v.magnitude()
-	return Vector{v.X / magnitude, v.Y / magnitude, v.Z / magnitude}
-}
-
-func (v Vector) magnitude() float32 {
-	return float32(math.Sqrt(float64(v.X*v.X + v.Y*v.Y + v.Z*v.Z)))
-}
-
-func (v Vector) mul(scalar float32) Vector {
-	return Vector{v.X * scalar, v.Y * scalar, v.Z * scalar}
 }
 
 // makeVao initializes and returns a vertex array from the points provided.
@@ -293,17 +265,12 @@ func makeVao(points []float32) uint32 {
 func makeParticles() []*Particle {
 	particles := make([]*Particle, particleCount)
 	for x := 0; x < particleCount; x++ {
-		// Random X, Random Y between -1 and 1
-
-		// xPosition := rand.Float32()*2 - 1
-		// yPosition := rand.Float32()*2 - 1
-
-		// Random X, Random Y between -0.5 and 0.5
-		xPosition := rand.Float32() - 0.5
-		yPosition := rand.Float32() - 0.5
+		// Random X, Random Y between -1.0 and 1.0
+		xPosition := rand.Float32()*2 - 1
+		yPosition := rand.Float32()*2 - 1
 
 		// Float32 mass of 100.0
-		mass := float32(1.0)
+		mass := float32(particleMass)
 		blackhole := false
 
 		if x == 0 {
@@ -343,7 +310,7 @@ func newParticle(x, y, mass float32, blackhole bool) *Particle {
 	// Calculate the velocity vector
 	velocity := Vector{0, 0, 0}
 	if distance != 0 {
-		velocity = Vector{-(y - center.Y) / distance, (x - center.X) / distance, 0}.mul(0.5)
+		velocity = Vector{-(y - center.Y) / distance, (x - center.X) / distance, 0}.mul(initialSpinFactor)
 	}
 
 	return &Particle{
@@ -398,6 +365,11 @@ func initOpenGL() uint32 {
 	}
 
 	prog := gl.CreateProgram()
+
+	// Enable blending
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
 	gl.AttachShader(prog, vertexShader)
 	gl.AttachShader(prog, fragmentShader)
 	gl.LinkProgram(prog)
