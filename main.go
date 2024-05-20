@@ -21,7 +21,7 @@ const (
 	height = 900
 
 	particleCount     = 25000
-	particleSize      = 0.001
+	particleSize      = 0.0015
 	grav              = 0.01
 	particleMass      = 1.0
 	blackHoleMass     = 999999999999

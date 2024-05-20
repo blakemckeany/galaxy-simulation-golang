@@ -1,7 +1,7 @@
 # Galaxy (n-body) simulation
 ## Written in Go using OpenGL
 
-![alt text](<screenshot2.png>)
+![alt text](<screenshot3.png>)
 
 
 
@@ -17,6 +17,7 @@
 - 100 particles: 120fps
 - 3000 particles: ~90fps
 - 10000 particles: ~38fps
+- 25000 particles: ~15fps
 ### Shader optimisation
 TBC
 
