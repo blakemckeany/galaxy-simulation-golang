@@ -29,35 +29,7 @@ const (
 	dampeningFactor   = 0.9983
 	initialSpinFactor = 0.1
 	queryRange        = 15
-
-	// Vertex shader, GLSL
-	vertexShaderSource = `
-        #version 410
-        in vec3 vp;
-        void main() {
-            gl_Position = vec4(vp, 1.0);
-        }
-    ` + "\x00"
-
-	// Fragment shader, GLSL
-	fragmentShaderSource = `
-        #version 410
-        out vec4 frag_colour;
-        void main() {
-            frag_colour = vec4(1, 1, 1, 0.6);
-        }
-    ` + "\x00"
 )
-
-type Particle struct {
-	drawable uint32
-
-	x, y         float32
-	mass         float32
-	velocity     Vector
-	acceleration Vector
-	blackhole    bool
-}
 
 var (
 	// Slice of vertices for a square
@@ -99,25 +71,6 @@ func main() {
 	}
 }
 
-func (p *Particle) draw() {
-	// Update the vertex data based on the current position
-	points := make([]float32, len(square))
-	copy(points, square)
-
-	for i := 0; i < len(points); i += 3 {
-		points[i] += p.x
-		points[i+1] += p.y
-	}
-
-	// Update the vertex data in the VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, p.drawable)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
-
-	// Render the particle
-	gl.BindVertexArray(p.drawable)
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
-}
-
 func draw(particles []*Particle, window *glfw.Window, prog uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(prog)
@@ -142,14 +95,11 @@ func draw(particles []*Particle, window *glfw.Window, prog uint32) {
 
 	updateParticles(particles, dt)
 
-	// updateParticles(particles)
-
 	glfw.PollEvents()
 	window.SwapBuffers()
 }
 
 func updateParticles(particles []*Particle, dt float32) {
-
 	// Quad tree
 	quadTree = NewQuadtree(-1, -1, 2, 2)
 
@@ -165,21 +115,6 @@ func updateParticles(particles []*Particle, dt float32) {
 		queryRange := Rect{p.x - queryRange/2, p.y - queryRange/2, queryRange, queryRange}
 		nearbyParticles := quadTree.Query(queryRange)
 
-		// node := quadTree.GetNode(p)
-
-		// // If not null, get the particles in the node and its neighbours
-		// if node == nil {
-		// 	continue
-		// }
-		// particlesInNode := node.Particles
-
-		// neighbourNodes := node.GetNeighbors()
-
-		// for _, neighbour := range neighbourNodes {
-		// 	particlesInNode = append(particlesInNode, neighbour.Particles...)
-		// }
-
-		// if node != nil {
 		for _, p2 := range nearbyParticles {
 			if p == p2 {
 				continue
@@ -191,7 +126,6 @@ func updateParticles(particles []*Particle, dt float32) {
 			// Accumulate the force to the particle's acceleration
 			p.acceleration = p.acceleration.add(force.mul(0.8 / p.mass))
 		}
-		// }
 	}
 
 	// Update the position and velocity of the particles
@@ -282,43 +216,6 @@ func makeParticles() []*Particle {
 	}
 
 	return particles
-}
-
-func newParticle(x, y, mass float32, blackhole bool) *Particle {
-	points := make([]float32, len(square))
-	copy(points, square)
-
-	// Set the x and y position of the particle
-	for i := 0; i < len(points); i += 3 {
-		points[i] += x
-		points[i+1] += y
-	}
-
-	// Random velocity
-
-	// Calculate the initial velocity of the particle
-	// Based on perpindicular vector to the center of the screen
-	// This will give the particle a circular orbit
-
-	center := Vector{0, 0, 0}
-	position := Vector{x, y, 0}
-	distance := position.distance(center)
-
-	// Calculate the velocity vector
-	velocity := Vector{0, 0, 0}
-	if distance != 0 {
-		velocity = Vector{-(y - center.Y) / distance, (x - center.X) / distance, 0}.mul(initialSpinFactor)
-	}
-
-	return &Particle{
-		drawable: makeVao(points),
-
-		x:         x,
-		y:         y,
-		velocity:  velocity,
-		mass:      mass,
-		blackhole: blackhole,
-	}
 }
 
 func compileShader(source string, shaderType uint32) (uint32, error) {
