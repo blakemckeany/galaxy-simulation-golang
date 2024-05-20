@@ -23,4 +23,6 @@ TBC
 
 
 ## Inspiration
-https://youtu.be/OJxEcs0w_kE?si=41RXxOhwx0NRP2C0
+- [Coding Challenge #98.1: Quadtree - Part 1 / 2 by Coding Train](https://youtu.be/OJxEcs0w_kE?si=41RXxOhwx0NRP2C0)
+- [N-Body Simulation by a2flo](https://youtu.be/DoLe1c-eokI?si=aGGQCvkAPzL-Xjbu)
+- [Quadtrees and The Barnes-Hut Algorithm: The Making of a Gravity Simulation by William Y. Feng](https://www.youtube.com/watch?v=tOlKLJ4WmSE)
