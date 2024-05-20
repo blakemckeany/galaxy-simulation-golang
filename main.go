@@ -20,12 +20,12 @@ const (
 	width  = 900
 	height = 900
 
-	particleCount     = 15000
-	particleSize      = 0.0025
-	grav              = 5.0
-	particleMass      = 1
-	blackHoleMass     = 1
-	softeningFactor   = 0.1
+	particleCount     = 10000
+	particleSize      = 0.002
+	grav              = 0.01
+	particleMass      = 1.0
+	blackHoleMass     = 999999999999
+	softeningFactor   = 0.9
 	dampeningFactor   = 0.9983
 	initialSpinFactor = 0.1
 	queryRange        = 15
@@ -44,7 +44,7 @@ const (
         #version 410
         out vec4 frag_colour;
         void main() {
-            frag_colour = vec4(1, 1, 1, 0.2);
+            frag_colour = vec4(1, 1, 1, 0.3);
         }
     ` + "\x00"
 )
@@ -186,7 +186,7 @@ func updateParticles(particles []*Particle, dt float32) {
 			}
 
 			// Calculate the force between the particles
-			force := calculateForce(p, p2).mul(0.0001)
+			force := calculateForce(p, p2)
 
 			// Accumulate the force to the particle's acceleration
 			p.acceleration = p.acceleration.add(force.mul(0.8 / p.mass))
@@ -196,9 +196,6 @@ func updateParticles(particles []*Particle, dt float32) {
 
 	// Update the position and velocity of the particles
 	for _, p := range particles {
-		// if p.blackhole {
-		// 	continue
-		// }
 		// Update velocity based on acceleration
 		p.velocity = p.velocity.add(p.acceleration.mul(dt))
 
