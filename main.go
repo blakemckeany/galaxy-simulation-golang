@@ -17,12 +17,14 @@ import (
 )
 
 const (
-	width  = 720
-	height = 720
+	width  = 900
+	height = 900
 
-	particleCount = 1500
-	particleSize  = 0.0015
-	grav          = 0.0000
+	particleCount   = 1500
+	particleSize    = 0.001
+	grav            = 0.0000
+	blackHoleMass   = 10000
+	softeningFactor = 0.9
 
 	// Vertex shader, GLSL
 	vertexShaderSource = `
@@ -38,7 +40,7 @@ const (
         #version 410
         out vec4 frag_colour;
         void main() {
-            frag_colour = vec4(0.5, 1, 0, 0.5);
+            frag_colour = vec4(1, 1, 1, 0.1);
         }
     ` + "\x00"
 )
@@ -54,7 +56,7 @@ type Particle struct {
 	mass         float32
 	velocity     Vector
 	acceleration Vector
-	anchor       bool
+	blackhole    bool
 }
 
 var (
@@ -69,6 +71,10 @@ var (
 		-particleSize, particleSize, 0, // top
 		particleSize, particleSize, 0, // left
 		particleSize, -particleSize, 0, // right
+	}
+
+	quadTree = Quadtree{
+		Bounds: Rect{X: -1, Y: -1, W: 1, H: 1},
 	}
 
 	frames      = float32(0)
@@ -169,11 +175,14 @@ func updateParticles(particles []*Particle, dt float32) {
 
 	// Update the position and velocity of the particles
 	for _, p := range particles {
-		if p.anchor {
+		if p.blackhole {
 			continue
 		}
 		// Update velocity based on acceleration
 		p.velocity = p.velocity.add(p.acceleration.mul(dt))
+
+		// Dampen the velocity
+		p.velocity = p.velocity.mul(0.99999)
 
 		// Update position based on velocity
 		p.x += p.velocity.X * dt
@@ -232,7 +241,7 @@ func calculateForce(p1, p2 *Particle) Vector {
 	distanceMagnitude := distance.magnitude()
 
 	// Apply a softening factor to prevent excessive force at close distances
-	softening := float32(0.7)
+	softening := float32(softeningFactor)
 	distanceMagnitude = float32(math.Sqrt(float64(distanceMagnitude*distanceMagnitude + softening*softening)))
 
 	// Calculate the force magnitude using Newton's law of universal gravitation
@@ -286,28 +295,32 @@ func makeParticles() []*Particle {
 	for x := 0; x < particleCount; x++ {
 		// Random X, Random Y between -1 and 1
 
-		xPosition := rand.Float32()*2 - 1
-		yPosition := rand.Float32()*2 - 1
+		// xPosition := rand.Float32()*2 - 1
+		// yPosition := rand.Float32()*2 - 1
+
+		// Random X, Random Y between -0.5 and 0.5
+		xPosition := rand.Float32() - 0.5
+		yPosition := rand.Float32() - 0.5
 
 		// Float32 mass of 100.0
 		mass := float32(1.0)
-		anchor := false
+		blackhole := false
 
 		if x == 0 {
 			xPosition = 0
 			yPosition = 0
-			mass = 1000
-			anchor = true
+			mass = blackHoleMass
+			blackhole = true
 		}
 
-		p := newParticle(xPosition, yPosition, mass, anchor)
+		p := newParticle(xPosition, yPosition, mass, blackhole)
 		particles[x] = p
 	}
 
 	return particles
 }
 
-func newParticle(x, y, mass float32, anchor bool) *Particle {
+func newParticle(x, y, mass float32, blackhole bool) *Particle {
 	points := make([]float32, len(square))
 	copy(points, square)
 
@@ -330,17 +343,17 @@ func newParticle(x, y, mass float32, anchor bool) *Particle {
 	// Calculate the velocity vector
 	velocity := Vector{0, 0, 0}
 	if distance != 0 {
-		velocity = Vector{-(y - center.Y) / distance, (x - center.X) / distance, 0}.mul(0.15)
+		velocity = Vector{-(y - center.Y) / distance, (x - center.X) / distance, 0}.mul(0.5)
 	}
 
 	return &Particle{
 		drawable: makeVao(points),
 
-		x:        x,
-		y:        y,
-		velocity: velocity,
-		mass:     mass,
-		anchor:   anchor,
+		x:         x,
+		y:         y,
+		velocity:  velocity,
+		mass:      mass,
+		blackhole: blackhole,
 	}
 }
 
