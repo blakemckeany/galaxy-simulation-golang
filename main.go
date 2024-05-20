@@ -20,8 +20,8 @@ const (
 	width  = 900
 	height = 900
 
-	particleCount     = 10000
-	particleSize      = 0.002
+	particleCount     = 25000
+	particleSize      = 0.001
 	grav              = 0.01
 	particleMass      = 1.0
 	blackHoleMass     = 999999999999
@@ -44,7 +44,7 @@ const (
         #version 410
         out vec4 frag_colour;
         void main() {
-            frag_colour = vec4(1, 1, 1, 0.3);
+            frag_colour = vec4(1, 1, 1, 0.6);
         }
     ` + "\x00"
 )

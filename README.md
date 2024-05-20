@@ -1,7 +1,7 @@
 # Galaxy (n-body) simulation
 ## Written in Go using OpenGL
 
-![alt text](<screenshot.png>)
+![alt text](<screenshot2.png>)
 
 
 
